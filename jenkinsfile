@@ -1,0 +1,48 @@
+pipeline {
+    agent {
+        label 'devops1-hfdl'
+    }
+    
+    tools {
+        nodejs 'NodeJS'
+    }
+
+    stages {
+        stage('Checkout SCM') {
+            steps {
+                git branch: 'main', url: 'https://github.com/hafidelrs/simple-apps.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh '''cd apps
+                npm install'''
+            }
+        }
+        stage('Testing') {
+            steps {
+                sh '''cd apps
+                npm test
+                npm run test:coverage'''
+            }
+        }
+        stage('Code Review') {
+            steps {
+                sh '''sonar-scanner \\
+                -Dsonar.projectKey=Simple-Apps \\
+                -Dsonar.sources=. \\
+                -Dsonar.host.url=http://172.23.10.13:9000 \\
+                -Dsonar.login=sqp_20aa281ef65c79623a0e65754d30cf273297d593'''
+            }
+        }
+        stage('Deploy compose') {
+            steps {
+                sh '''
+                sed -i 's/localhost/db'
+                docker compose build
+                docker compose up -d
+                '''
+            }
+        }
+    }
+}
